@@ -1,5 +1,5 @@
 
-function! lsfiles#exec(q_args) abort
+function! lsfiles#exec(q_bang, q_args) abort
     let tstatus = term_getstatus(bufnr())
     if (tstatus != 'finished') && !empty(tstatus)
         call popup_notification('could not open on running terminal buffer', s:lsfiles_notification_opt)
@@ -8,7 +8,7 @@ function! lsfiles#exec(q_args) abort
     elseif &modified
         call popup_notification('could not open on modified buffer', s:lsfiles_notification_opt)
     else
-        let lines = s:system('git ls-files')
+        let lines = s:system(a:q_bang, 'git ls-files')
         if empty(lines)
             call popup_notification('no such file or not a git repository', s:lsfiles_notification_opt)
         else
@@ -19,24 +19,27 @@ function! lsfiles#exec(q_args) abort
     endif
 endfunction
 
-function! s:system(cmd)
+function! s:system(q_bang, cmd) abort
     let saved = getcwd()
-    let lines = []
+    let xs = []
     try
         let toplevel = trim(system('git rev-parse --show-toplevel'))
         if toplevel !~# '^fatal:'
             cd `=toplevel`
-            for line in split(system(a:cmd), "\n", 1)
+            if (a:q_bang == '!') || !has_key(s:lsfiles_caches, toplevel)
+                let s:lsfiles_caches[toplevel] = split(system(a:cmd), "\n", 1)
+            endif
+            for line in s:lsfiles_caches[toplevel]
                 let path = s:fullpath(toplevel .. '/' .. line)
                 if filereadable(path)
-                    let lines += [path]
+                    let xs += [path]
                 endif
             endfor
         endif
     finally
         cd `=saved`
     endtry
-    return lines
+    return xs
 endfunction
 
 function! s:lsfiles_callback(winid, key) abort
@@ -64,6 +67,7 @@ let s:PopupWin = vital#lsfiles#import('PopupWin')
 
 let s:NO_MATCHES = 'no matches'
 
+let s:lsfiles_caches = get(s:, 'lsfiles_caches', {})
 let s:lsfiles_title = 'lsfiles'
 let s:lsfiles_notification_opt = {
     \   'title' : s:lsfiles_title,
