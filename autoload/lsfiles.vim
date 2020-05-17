@@ -8,7 +8,7 @@ function! lsfiles#exec(q_bang, q_args) abort
     elseif &modified
         call popup_notification('could not open on modified buffer', s:lsfiles_notification_opt)
     else
-        let lines = s:system(a:q_bang, 'git ls-files')
+        let lines = s:system(a:q_bang, a:q_args, 'git ls-files')
         if empty(lines)
             call popup_notification('no such file or not a git repository', s:lsfiles_notification_opt)
         else
@@ -19,17 +19,18 @@ function! lsfiles#exec(q_bang, q_args) abort
     endif
 endfunction
 
-function! s:system(q_bang, cmd) abort
+function! s:system(q_bang, q_args, cmd) abort
     let saved = getcwd()
     let xs = []
     try
         let toplevel = trim(system('git rev-parse --show-toplevel'))
         if toplevel !~# '^fatal:'
             cd `=toplevel`
-            if (a:q_bang == '!') || !has_key(s:lsfiles_caches, toplevel)
-                let s:lsfiles_caches[toplevel] = split(system(a:cmd), "\n", 1)
+            let key = toplevel .. '=' .. a:q_args
+            if (a:q_bang == '!') || !has_key(s:lsfiles_caches, key)
+                let s:lsfiles_caches[key] = systemlist(a:cmd .. ' ' .. a:q_args)
             endif
-            for line in s:lsfiles_caches[toplevel]
+            for line in s:lsfiles_caches[key]
                 let path = s:fullpath(toplevel .. '/' .. line)
                 if filereadable(path)
                     let xs += [path]
