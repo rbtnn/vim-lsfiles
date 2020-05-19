@@ -52,6 +52,8 @@ function! s:_filter(winid, key) abort
         endtry
         call s:_update_lines(a:winid, {-> filter_text }, timer)
         return 1
+    elseif 'q' == a:key
+        return popup_filter_menu(a:winid, "\<esc>")
     elseif 'g' == a:key
         call s:_set_cursorline(a:winid, 1)
         return 1
@@ -90,9 +92,8 @@ function! s:_menu_opt(winid, filter_len, orig_len) abort
     let opts = getwinvar(a:winid, s:KEY_OPTIONS)
     let retval = extend({
         \   'maxheight' : &lines / 3,
-        \   'minheight' : &lines / 3,
         \   'maxwidth' : &columns - 4,
-        \   'minwidth' : &columns - 4,
+        \   'padding' : [0, 1, 0, 1],
         \   'pos' : 'topleft',
         \   'line' : &lines + 1,
         \   'col' : 1,
