@@ -23,7 +23,7 @@ function! lsfiles#exec(q_args) abort
                             call popup_notification('no such file', s:lsfiles_notification_opt)
                         else
                             let winid = popup_menu(lines, {})
-                            call win_execute(winid, 'setlocal number')
+                            "call win_execute(winid, 'setlocal number')
                             call setwinvar(winid, 'toplevel', toplevel)
                             call s:PopupWin.enhance_menufilter(winid, s:lsfiles_options)
                         endif
