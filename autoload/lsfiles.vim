@@ -10,13 +10,13 @@ function! lsfiles#exec(q_args) abort
     else
         let saved = getcwd()
         try
+            let flag = v:false
             for dir in [expand('%:p:h'), fnamemodify(resolve(expand('%:p')), ':h'), getcwd()]
                 if isdirectory(dir)
                     cd `=dir`
                     let toplevel = trim(system('git rev-parse --show-toplevel'))
-                    if toplevel =~# '^fatal:'
-                        call popup_notification('not a git repository', s:lsfiles_notification_opt)
-                    else
+                    if toplevel !~# '^fatal:'
+                        let flag = v:true
                         cd `=toplevel`
                         let lines = systemlist('git ls-files ' .. a:q_args)
                         if empty(lines)
@@ -27,10 +27,13 @@ function! lsfiles#exec(q_args) abort
                             call setwinvar(winid, 'toplevel', toplevel)
                             call s:PopupWin.enhance_menufilter(winid, s:lsfiles_options)
                         endif
+                        break
                     endif
-                    break
                 endif
             endfor
+            if !flag
+                call popup_notification('not a git repository', s:lsfiles_notification_opt)
+            endif
         finally
             cd `=saved`
         endtry
