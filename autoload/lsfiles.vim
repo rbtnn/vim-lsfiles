@@ -1,5 +1,5 @@
 
-function! lsfiles#exec(q_args) abort
+function! lsfiles#exec(q_bang, q_args) abort
     let tstatus = term_getstatus(bufnr())
     if (tstatus != 'finished') && !empty(tstatus)
         call popup_notification('could not open on running terminal buffer', s:lsfiles_notification_opt)
@@ -18,12 +18,13 @@ function! lsfiles#exec(q_args) abort
                     if toplevel !~# '^fatal:'
                         let flag = v:true
                         cd `=toplevel`
-                        let lines = systemlist('git ls-files ' .. a:q_args)
-                        if empty(lines)
+                        if !has_key(s:lsfiles_caches, toplevel) || (a:q_bang == '!')
+                            let s:lsfiles_caches[toplevel] = systemlist('git ls-files ' .. a:q_args)
+                        endif
+                        if empty(s:lsfiles_caches[toplevel])
                             call popup_notification('no such file', s:lsfiles_notification_opt)
                         else
-                            let winid = popup_menu(lines, {})
-                            "call win_execute(winid, 'setlocal number')
+                            let winid = popup_menu(s:lsfiles_caches[toplevel], {})
                             call setwinvar(winid, 'toplevel', toplevel)
                             call s:PopupWin.enhance_menufilter(winid, s:lsfiles_options)
                         endif
@@ -67,6 +68,7 @@ let s:PopupWin = vital#lsfiles#import('PopupWin')
 
 let s:NO_MATCHES = 'no matches'
 
+let s:lsfiles_caches = get(s:, 'lsfiles_caches', {})
 let s:lsfiles_title = 'lsfiles'
 let s:lsfiles_notification_opt = {
     \   'title' : s:lsfiles_title,
