@@ -14,8 +14,8 @@ function! lsfiles#exec(q_bang, q_args) abort
             for dir in [expand('%:p:h'), fnamemodify(resolve(expand('%:p')), ':h'), getcwd()]
                 if isdirectory(dir)
                     cd `=dir`
-                    let toplevel = trim(system('git rev-parse --show-toplevel'))
-                    if toplevel !~# '^fatal:'
+                    let toplevel = s:get_toplevel()
+                    if isdirectory(toplevel)
                         let flag = v:true
                         cd `=toplevel`
                         if !has_key(s:lsfiles_caches, toplevel) || (a:q_bang == '!')
@@ -60,6 +60,21 @@ endfunction
 
 function! s:fullpath(path) abort
     return fnamemodify(resolve(a:path), ':p:gs?\\?/?')
+endfunction
+
+function! s:get_toplevel() abort
+    for dir in [expand('%:p:h'), fnamemodify(resolve(expand('%:p')), ':h'), getcwd()]
+        if isdirectory(dir)
+            let xs = split(dir, '[\/]')
+            while !empty(xs)
+                if isdirectory(join(xs + ['.git'], '/'))
+                    return s:fullpath(join(xs, '/'))
+                endif
+                call remove(xs, -1)
+            endwhile
+        endif
+    endfor
+    return ''
 endfunction
 
 
