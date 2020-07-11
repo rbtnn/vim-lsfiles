@@ -63,7 +63,7 @@ function! s:fullpath(path) abort
 endfunction
 
 
-
+" :Vitalize . --name=lsfiles +PopupWin
 let s:PopupWin = vital#lsfiles#import('PopupWin')
 
 let s:NO_MATCHES = 'no matches'

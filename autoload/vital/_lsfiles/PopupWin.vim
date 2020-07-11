@@ -24,14 +24,45 @@ function! s:enhance_menufilter(winid, options) abort
     let a:options['cursorline'] = get(a:options, 'cursorline', 1)
     " clear, due to call _update_lines
     let a:options['prev_filter_text'] = ''
+    let a:options['user_callback'] = get(a:options, 'callback')
     call setwinvar(a:winid, s:KEY_LINES, lines)
     call setwinvar(a:winid, s:KEY_OPTIONS, a:options)
+    call s:_hide_cursor(a:winid)
     call popup_setoptions(a:winid, s:_menu_opt(a:winid, len(lines), len(lines)))
     call s:_update_lines(a:winid, {-> a:options['filter_text'] }, v:null)
     call s:_set_cursorline(a:winid, a:options['cursorline'])
 endfunction
 
 
+
+function! s:_hide_cursor(winid) abort
+    call setwinvar(a:winid, 'cursor_hl', s:_parse_hl('Cursor'))
+    highlight Cursor guifg=NONE guibg=NONE ctermfg=NONE ctermbg=NONE
+endfunction
+
+function! s:_show_cursor(winid) abort
+    execute getwinvar(a:winid, 'cursor_hl')
+endfunction
+
+function! s:_parse_hl(name) abort
+    let m = matchlist(trim(execute('highlight ' .. a:name)), '^\(\i\+\)\s\+xxx\s\+\(.*\)$')
+    if !empty(m)
+        if m[2] == 'cleared'
+            return printf('highlight clear %s', m[1])
+        elseif m[2] =~ '^links to'
+            return printf('highlight link %s %s', m[1], split(m[2])[-1])
+        else
+            return printf('highlight %s %s', m[1], m[2])
+        endif
+    endif
+    return ''
+endfunction
+
+function! s:_callback(winid, key) abort
+    call s:_show_cursor(a:winid)
+    let options = getwinvar(a:winid, s:KEY_OPTIONS)
+    call call(options['user_callback'], [(a:winid), (a:key)])
+endfunction
 
 function! s:_filter(winid, key) abort
     let opts = getwinvar(a:winid, s:KEY_OPTIONS)
@@ -43,8 +74,10 @@ function! s:_filter(winid, key) abort
                 execute printf('autocmd CmdWinEnter  * :call popup_hide(%d)', a:winid)
                 execute printf('autocmd CmdWinLeave  * :call popup_show(%d) | redraw', a:winid)
             augroup END
+            call s:_show_cursor(a:winid)
             let filter_text = input('/', getwinvar(a:winid, s:KEY_OPTIONS)['filter_text'])
         finally
+            call s:_hide_cursor(a:winid)
             augroup vital-popupwin
                 autocmd!
             augroup END
@@ -104,6 +137,7 @@ function! s:_menu_opt(winid, filter_len, orig_len) abort
     let retval['title'] = printf('%s (%d/%d) %s', get(opts, 'title', ''),
         \ a:filter_len, a:orig_len, empty(opts['filter_text']) ? '' : '/' .. opts['filter_text'])
     let retval['filter'] = function('s:_filter')
+    let retval['callback'] = function('s:_callback')
 
     return retval
 endfunction
