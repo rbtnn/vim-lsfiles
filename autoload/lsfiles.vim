@@ -24,9 +24,8 @@ function! lsfiles#exec(q_bang, q_args) abort
                         if empty(s:lsfiles_caches[toplevel])
                             call popup_notification('no such file', s:lsfiles_notification_opt)
                         else
-                            let winid = popup_menu(s:lsfiles_caches[toplevel], {})
+                            let winid = s:PopupWinFinder.open(s:lsfiles_caches[toplevel], s:lsfiles_options)
                             call setwinvar(winid, 'toplevel', toplevel)
-                            call s:PopupWin.enhance_menufilter(winid, s:lsfiles_options)
                         endif
                         break
                     endif
@@ -78,8 +77,8 @@ function! s:get_toplevel() abort
 endfunction
 
 
-" :Vitalize . --name=lsfiles +PopupWin
-let s:PopupWin = vital#lsfiles#import('PopupWin')
+" :Vitalize . --name=lsfiles +PopupWinFinder
+let s:PopupWinFinder = vital#lsfiles#import('PopupWinFinder')
 
 let s:NO_MATCHES = 'no matches'
 
@@ -93,6 +92,5 @@ let s:lsfiles_notification_opt = {
 let s:lsfiles_options = {
     \   'title' : s:lsfiles_title,
     \   'callback' : function('s:lsfiles_callback'),
-    \   'no_matches' : s:NO_MATCHES,
     \ }
 
