@@ -20,6 +20,12 @@ function! s:open(lines, options) abort
     let s:result_winid = popup_menu(a:lines, {})
     let s:search_winid = -1
     let s:orig_lines = a:lines
+    let s:lines_width = 0
+    for line in s:orig_lines
+        if s:lines_width < strwidth(line)
+            let s:lines_width = strwidth(line)
+        endif
+    endfor
     call s:_hide_cursor()
     call s:_update_lines(v:true)
     call s:_set_options()
@@ -64,18 +70,22 @@ function! s:_set_options() abort
         let orig_len = len(s:orig_lines)
         let filter_lines = getbufline(winbufnr(s:result_winid), 1, '$')
         let filter_len = (get(filter_lines, 0, '') == s:no_matches) ? 0 : len(filter_lines)
+        let width = s:lines_width
+        if s:lines_width < len(s:options['curr_filter_text']) + 1
+            let width = len(s:options['curr_filter_text']) + 1
+        endif
         call popup_setoptions(s:result_winid, #{
             \ title: printf('%s(%d/%d)', s:title, filter_len, orig_len),
             \ filter: function('s:_filter'),
             \ callback: function('s:_callback'),
             \ zindex: 100,
             \ maxheight: &lines / 3,
-            \ maxwidth: &columns - 4,
+            \ minwidth: width,
+            \ maxwidth: width,
             \ padding: [(s:search_mode ? 1 : 0), 1, 0, 1],
             \ pos: 'center',
             \ border: [1,1,1,1],
             \ borderchars: [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-            \ minwidth: len(s:options['curr_filter_text']) + 1,
             \ })
     endif
     if s:search_winid != -1
@@ -94,7 +104,7 @@ function! s:_set_options() abort
 endfunction
 
 function! s:_filter(winid, key) abort
-    "echo printf('%x', char2nr(a:key))
+    "echo printf('%x,"%s"', char2nr(a:key), a:key)
     if s:search_mode
         let s:options['curr_filter_text'] = get(getbufline(winbufnr(s:search_winid), 1, 1), 0, '/')[1:]
         let chars = split(s:options['curr_filter_text'], '\zs')
@@ -107,7 +117,7 @@ function! s:_filter(winid, key) abort
         else
             if 21 == char2nr(a:key)
                 let s:options['curr_filter_text'] = ''
-            elseif (8 == char2nr(a:key)) || (128 == char2nr(a:key))
+            elseif (8 == char2nr(a:key)) || ("\x80kb" == a:key)
                 if 0 < len(chars)
                     if 1 == len(chars)
                         let chars = []
